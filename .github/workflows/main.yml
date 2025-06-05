@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Install yfinance
+        run: pip install yfinance
+  
       - name: Checkout
         uses: actions/checkout@v3
 
