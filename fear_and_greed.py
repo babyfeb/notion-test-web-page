@@ -1,37 +1,13 @@
-import requests
-from bs4 import BeautifulSoup
 import os
 
-def generate_html():
-    """CNN Fear and Greed Index와 TradingView 주식 차트를 포함한 HTML 파일을 생성합니다."""
-    # 웹사이트 구조 변경에 대응하기 위해 데이터를 가져오는 부분을 수정했습니다.
-    try:
-        # CNN에서 직접 데이터를 제공하는 JSON API를 사용합니다. 이 방식이 더 안정적입니다.
-        json_url = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata"
-        response = requests.get(json_url, headers={'User-Agent': 'Mozilla/5.0'})
-        response.raise_for_status()
-        data = response.json()
+def generate_final_html():
+    """
+    데이터 요청 부분을 Python이 아닌 Javascript로 넘겨
+    사용자 브라우저에서 직접 CNN API를 호출하도록 HTML 파일을 생성합니다.
+    이 방식은 깃허브 서버의 IP가 차단되는 문제를 근본적으로 해결합니다.
+    """
 
-        # 최신 데이터 추출
-        now_indicator = int(data['fear_and_greed']['score'])
-        now_status = data['fear_and_greed']['rating'].capitalize() # 예: "fear" -> "Fear"
-
-        # 7개의 개별 지표 데이터 추출
-        indicators_data = []
-        for item in data['fear_and_greed_components']:
-            # 'previous_close'를 현재 값으로 사용
-            title = item['indicator_name'].replace(" F&G Model", "") # 불필요한 텍스트 제거
-            rating = item['rating'].capitalize()
-            indicators_data.append({'title': title, 'status': rating})
-
-    except Exception as e:
-        print(f"Error fetching Fear & Greed data: {e}")
-        now_indicator = "N/A"
-        now_status = "데이터 로딩 실패"
-        indicators_data = []
-
-
-    # --- HTML 생성 ---
+    # HTML 구조와 Javascript 코드를 포함합니다.
     html_content = f"""
     <!DOCTYPE html>
     <html lang="ko">
@@ -44,9 +20,9 @@ def generate_html():
             .container {{ background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }}
             h1, h2 {{ text-align: center; color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }}
             .main-index {{ text-align: center; margin-bottom: 25px; }}
-            .main-index .value {{ font-size: 3em; font-weight: bold; color: #d9534f; }}
+            .main-index .value {{ font-size: 3em; font-weight: bold; color: #d9534f; min-height: 60px; }}
             .main-index .status {{ font-size: 1.2em; color: #555; }}
-            .indicators-list {{ list-style: none; padding: 0; }}
+            .indicators-list {{ list-style: none; padding: 0; min-height: 100px; }}
             .indicators-list li {{ background: #fafafa; padding: 10px; border-radius: 4px; margin-bottom: 8px; display: flex; justify-content: space-between; }}
             .indicators-list .title {{ font-weight: bold; color: #444; }}
             .indicators-list .status {{ color: #666; }}
@@ -61,21 +37,11 @@ def generate_html():
             <div class="fng-container">
                 <h2>CNN 공포와 탐욕 지수</h2>
                 <div class="main-index">
-                    <div class="value">{now_indicator}</div>
-                    <div class="status">{now_status}</div>
+                    <div id="fng-value" class="value">...</div>
+                    <div id="fng-status" class="status">Loading...</div>
                 </div>
-                <ul class="indicators-list">
-    """
-
-    for item in indicators_data:
-        html_content += f"""
-                <li>
-                    <span class="title">{item['title']}</span>
-                    <span class="status">{item['status']}</span>
-                </li>
-        """
-
-    html_content += """
+                <ul id="fng-list" class="indicators-list">
+                    <li>데이터를 불러오는 중입니다...</li>
                 </ul>
             </div>
 
@@ -85,60 +51,65 @@ def generate_html():
                 <div class="tradingview-widget-container">
                   <div class="tradingview-widget-container__widget"></div>
                   <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-overview.js" async>
-                  {{
-                    "symbols": [["NASDAQ:QQQ|1D"]],
-                    "chartOnly": false, "width": "100%", "height": "100%", "locale": "kr",
-                    "colorTheme": "light", "autosize": true, "showVolume": false, "showMA": false,
-                    "hideDateRanges": false, "hideMarketStatus": false, "hideSymbolLogo": false,
-                    "scalePosition": "right", "scaleMode": "Normal", "fontFamily": "-apple-system, BlinkMacSystemFont, Trebuchet MS, Roboto, Ubuntu, sans-serif",
-                    "fontSize": "10", "noTimeScale": false, "valuesTracking": "1", "changeMode": "price-and-percent",
-                    "chartType": "area", "maLineColor": "#2962FF", "maLineWidth": 1, "maLength": 9,
-                    "backgroundColor": "rgba(255, 255, 255, 1)", "lineWidth": 2, "lineType": 0,
-                    "dateRanges": ["1d", "1m", "3m", "1y", "all"]
-                  }}
+                  {{ "symbols": [["NASDAQ:QQQ|1D"]], "chartOnly": false, "width": "100%", "height": "100%", "locale": "kr", "colorTheme": "light", "autosize": true, "showVolume": false, "showMA": false, "hideDateRanges": false, "hideMarketStatus": false, "hideSymbolLogo": false, "scalePosition": "right", "scaleMode": "Normal", "fontFamily": "-apple-system, BlinkMacSystemFont, Trebuchet MS, Roboto, Ubuntu, sans-serif", "fontSize": "10", "noTimeScale": false, "valuesTracking": "1", "changeMode": "price-and-percent", "chartType": "area", "maLineColor": "#2962FF", "maLineWidth": 1, "maLength": 9, "backgroundColor": "rgba(255, 255, 255, 1)", "lineWidth": 2, "lineType": 0, "dateRanges": ["1d", "1m", "3m", "1y", "all"] }}
                   </script>
                 </div>
                 <div class="tradingview-widget-container">
                   <div class="tradingview-widget-container__widget"></div>
                   <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-overview.js" async>
-                  {{
-                    "symbols": [["NASDAQ:IQQQ|1D"]],
-                    "chartOnly": false, "width": "100%", "height": "100%", "locale": "kr",
-                    "colorTheme": "light", "autosize": true, "showVolume": false, "showMA": false,
-                    "hideDateRanges": false, "hideMarketStatus": false, "hideSymbolLogo": false,
-                    "scalePosition": "right", "scaleMode": "Normal", "fontFamily": "-apple-system, BlinkMacSystemFont, Trebuchet MS, Roboto, Ubuntu, sans-serif",
-                    "fontSize": "10", "noTimeScale": false, "valuesTracking": "1", "changeMode": "price-and-percent",
-                    "chartType": "area", "maLineColor": "#2962FF", "maLineWidth": 1, "maLength": 9,
-                    "backgroundColor": "rgba(255, 255, 255, 1)", "lineWidth": 2, "lineType": 0,
-                    "dateRanges": ["1d", "1m", "3m", "1y", "all"]
-                  }}
+                  {{ "symbols": [["NASDAQ:IQQQ|1D"]], "chartOnly": false, "width": "100%", "height": "100%", "locale": "kr", "colorTheme": "light", "autosize": true, "showVolume": false, "showMA": false, "hideDateRanges": false, "hideMarketStatus": false, "hideSymbolLogo": false, "scalePosition": "right", "scaleMode": "Normal", "fontFamily": "-apple-system, BlinkMacSystemFont, Trebuchet MS, Roboto, Ubuntu, sans-serif", "fontSize": "10", "noTimeScale": false, "valuesTracking": "1", "changeMode": "price-and-percent", "chartType": "area", "maLineColor": "#2962FF", "maLineWidth": 1, "maLength": 9, "backgroundColor": "rgba(255, 255, 255, 1)", "lineWidth": 2, "lineType": 0, "dateRanges": ["1d", "1m", "3m", "1y", "all"] }}
                   </script>
                 </div>
                 <div class="tradingview-widget-container">
                   <div class="tradingview-widget-container__widget"></div>
                   <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-overview.js" async>
-                  {{
-                    "symbols": [["NASDAQ:QQQI|1D"]],
-                    "chartOnly": false, "width": "100%", "height": "100%", "locale": "kr",
-                    "colorTheme": "light", "autosize": true, "showVolume": false, "showMA": false,
-                    "hideDateRanges": false, "hideMarketStatus": false, "hideSymbolLogo": false,
-                    "scalePosition": "right", "scaleMode": "Normal", "fontFamily": "-apple-system, BlinkMacSystemFont, Trebuchet MS, Roboto, Ubuntu, sans-serif",
-                    "fontSize": "10", "noTimeScale": false, "valuesTracking": "1", "changeMode": "price-and-percent",
-                    "chartType": "area", "maLineColor": "#2962FF", "maLineWidth": 1, "maLength": 9,
-                    "backgroundColor": "rgba(255, 255, 255, 1)", "lineWidth": 2, "lineType": 0,
-                    "dateRanges": ["1d", "1m", "3m", "1y", "all"]
-                  }}
+                  {{ "symbols": [["NASDAQ:QQQI|1D"]], "chartOnly": false, "width": "100%", "height": "100%", "locale": "kr", "colorTheme": "light", "autosize": true, "showVolume": false, "showMA": false, "hideDateRanges": false, "hideMarketStatus": false, "hideSymbolLogo": false, "scalePosition": "right", "scaleMode": "Normal", "fontFamily": "-apple-system, BlinkMacSystemFont, Trebuchet MS, Roboto, Ubuntu, sans-serif", "fontSize": "10", "noTimeScale": false, "valuesTracking": "1", "changeMode": "price-and-percent", "chartType": "area", "maLineColor": "#2962FF", "maLineWidth": 1, "maLength": 9, "backgroundColor": "rgba(255, 255, 255, 1)", "lineWidth": 2, "lineType": 0, "dateRanges": ["1d", "1m", "3m", "1y", "all"] }}
                   </script>
                 </div>
                 </div>
         </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {{
+                const FNG_API_URL = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata";
+                
+                const valueElem = document.getElementById('fng-value');
+                const statusElem = document.getElementById('fng-status');
+                const listElem = document.getElementById('fng-list');
+
+                fetch(FNG_API_URL)
+                    .then(response => {{
+                        if (!response.ok) {{
+                            throw new Error('Network response was not ok ' + response.statusText);
+                        }}
+                        return response.json();
+                    }})
+                    .then(data => {{
+                        valueElem.textContent = Math.round(data.fear_and_greed.score);
+                        statusElem.textContent = data.fear_and_greed.rating.charAt(0).toUpperCase() + data.fear_and_greed.rating.slice(1);
+                        
+                        listElem.innerHTML = ''; // Clear loading message
+                        data.fear_and_greed_components.forEach(item => {{
+                            const li = document.createElement('li');
+                            const title = item.indicator_name.replace(" F&G Model", "");
+                            const status = item.rating.charAt(0).toUpperCase() + item.rating.slice(1);
+                            li.innerHTML = `<span class="title">${{title}}</span><span class="status">${{status}}</span>`;
+                            listElem.appendChild(li);
+                        }});
+                    }})
+                    .catch(error => {{
+                        console.error("Failed to fetch Fear & Greed data:", error);
+                        valueElem.textContent = 'N/A';
+                        statusElem.textContent = '데이터 로드 실패';
+                        listElem.innerHTML = '<li>오류가 발생했습니다.</li>';
+                    }});
+            }});
+        </script>
     </body>
     </html>
     """
     return html_content
 
 if __name__ == "__main__":
-    html_output = generate_html()
+    html_output = generate_final_html()
     with open("index.html", "w", encoding="utf-8") as f:
-        f.write(html_output)
-    print("index.html 파일 생성 완료.")
